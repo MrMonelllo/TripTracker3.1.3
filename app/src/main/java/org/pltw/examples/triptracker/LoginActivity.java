@@ -2,6 +2,7 @@ package org.pltw.examples.triptracker;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.nfc.Tag;
 import android.support.v7.app.AlertDialog;
@@ -11,6 +12,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 
 import com.backendless.Backendless;
@@ -20,6 +22,7 @@ import com.backendless.exceptions.BackendlessFault;
 
 public class LoginActivity extends AppCompatActivity {
     EditText enter_name;
+
     Button sign_up_button;
     Button login_button;
     TextView sign_up_text;
@@ -74,69 +77,83 @@ public class LoginActivity extends AppCompatActivity {
         sign_up_button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String userEmail = enter_email.getText().toString();
-                String password = enter_password.getText().toString();
-                String name = enter_name.getText().toString();
+                AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
+                builder.setMessage("Bullying is a real problem, by registering you promise to never bully on this app");
+                builder.setTitle("Anti-Bullying");
+                builder.setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                String userEmail = enter_email.getText().toString();
+                                String password = enter_password.getText().toString();
+                                String name = enter_name.getText().toString();
 
-                userEmail = userEmail.trim();
-                password = password.trim();
-                name = name.trim();
+                                userEmail = userEmail.trim();
+                                password = password.trim();
+                                name = name.trim();
 
-                if (!userEmail.isEmpty() &&!password.isEmpty() && !name.isEmpty()&&password.length()>6) {
-                    BackendlessUser user = new BackendlessUser();
-                    user.setEmail(userEmail);
-                    user.setPassword(password);
-                    user.setProperty("name", name);
-                    final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
-                            "Please Wait!",
-                            "Creating a new account...",
-                            true);
-                    Backendless.UserService.register(user, new AsyncCallback<BackendlessUser>() {
-                        @Override
-                        public void handleResponse(BackendlessUser response) {
-                            Log.i(TAG,"Registration successful for "+ response.getEmail() );
-                            pDialog.dismiss();
-                        }
+                                if (!userEmail.isEmpty() &&!password.isEmpty() && !name.isEmpty()&&password.length()>6) {
+                                    BackendlessUser user = new BackendlessUser();
+                                    user.setEmail(userEmail);
+                                    user.setPassword(password);
+                                    user.setProperty("name", name);
+                                    final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
+                                            "Please Wait!",
+                                            "Creating a new account...",
+                                            true);
+                                    Backendless.UserService.register(user, new AsyncCallback<BackendlessUser>() {
+                                        @Override
+                                        public void handleResponse(BackendlessUser response) {
+                                            Log.i(TAG,"Registration successful for "+ response.getEmail() );
+                                            pDialog.dismiss();
+                                        }
 
-                        @Override
-                        public void handleFault(BackendlessFault fault) {
-                            Log.i(TAG, "Registration failed: " + fault.getMessage());
-                            warnUser(fault.getMessage(), 2);
-                            pDialog.dismiss();
-                        }
-                    });
+                                        @Override
+                                        public void handleFault(BackendlessFault fault) {
+                                            Log.i(TAG, "Registration failed: " + fault.getMessage());
+                                            warnUser(fault.getMessage(), 2);
+                                            pDialog.dismiss();
+                                        }
+                                    });
 
               /* register the user in Backendless */
 
-                }
-                else {
+                                }
+                                else {
              /* warn the user of the problem */
-                    warnUser(getString(R.string.empty_field_signup_error), 3);
+                                    warnUser(getString(R.string.empty_field_signup_error), 3);
 
 
-                }
-            }
+                                }
+                            }
 
 
-        });
-        sign_up_text.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (sign_up_text.getText()=="Sign Up!"){
-                    enter_name.setVisibility(View.VISIBLE);
-                    sign_up_button.setVisibility(View.VISIBLE);
-                    login_button.setVisibility(View.GONE);
-                    sign_up_text.setText("Cancel Sign Up");
-            }
-            else{
-                    sign_up_text.setText("Sign Up!");
-                    enter_name.setVisibility(View.GONE);
-                    sign_up_button.setVisibility(View.GONE);
-                    login_button.setVisibility(View.VISIBLE);
-
-                }
+                });
+                AlertDialog dialog = builder.create();
+                dialog.show();
             }
         });
+                sign_up_text.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (sign_up_text.getText()==getString(R.string.sign_up)){
+                            enter_name.setVisibility(View.VISIBLE);
+                            sign_up_button.setVisibility(View.VISIBLE);
+                            login_button.setVisibility(View.GONE);
+                            sign_up_text.setText(getString(R.string.cancel_sign_up));
+                        }
+                        else{
+                            sign_up_text.setText(getString(R.string.sign_up));
+                            enter_name.setVisibility(View.GONE);
+                            sign_up_button.setVisibility(View.GONE);
+                            login_button.setVisibility(View.VISIBLE);
+
+                        }
+                    }
+                });
+
+
+
+
 
     }
     public void warnUser(String error, int id){

@@ -1,5 +1,7 @@
 package org.pltw.examples.triptracker;
 
+import android.app.Activity;
+import android.support.v7.app.AlertDialog;
 import android.view.View;
 
         import android.content.Intent;
@@ -16,7 +18,9 @@ import android.view.View;
         import android.view.ViewGroup;
         import android.widget.AdapterView;
         import android.widget.ArrayAdapter;
-        import android.widget.ListView;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ListView;
         import android.widget.TextView;
 
         import com.backendless.Backendless;
@@ -32,7 +36,9 @@ import java.util.List;
  * Created by klaidley on 4/13/2015.
  */
 public class TripListFragment extends ListFragment {
-
+    EditText search_et;
+    TextView noData;
+    ImageButton search_img;
     private static final String TAG = "TripListFragment";
     private ArrayList<Trip> mTrips;
     private boolean mPublicView = false;
@@ -70,11 +76,50 @@ public class TripListFragment extends ListFragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup parent, Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_trip_list, parent, false);
+        search_et = (EditText) v.findViewById(R.id.search_et);
+        search_img = (ImageButton) v.findViewById(R.id.search_img);
 
         //register the context menu
         ListView listView = (ListView)v.findViewById(android.R.id.list);
         registerForContextMenu(listView);
+        search_img.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String searchText = search_et.getText().toString().trim();
+                boolean found = false;
+                int tries = mTrips.size()+1;
+                while(found ==false){
+                    tries-=1;
+                    if (mTrips.size()==0){
+                        ((TripAdapter)getListAdapter()).notifyDataSetChanged();
+                        found = true;
+                        break;
+                    }
+                    int compare =searchText.compareToIgnoreCase((mTrips.get(mTrips.size()/2)).getName());
+                    if (compare==0){
+                        found = true;
+                        Trip searchTrip = mTrips.get(mTrips.size()/2);
+                        mTrips.clear();
+                        mTrips.add(searchTrip);
+                        ((TripAdapter)getListAdapter()).notifyDataSetChanged();
 
+                    }
+                    else if(compare <0){
+
+                        int lengthFinal= mTrips.size()/2;
+                        while(lengthFinal<mTrips.size()){
+                            mTrips.remove(mTrips.size()-1);
+                        }
+                    }
+                    else if(compare>0){
+                        int lengthFinal = mTrips.size()/2;
+                        while(lengthFinal<mTrips.size()){
+                            mTrips.remove(mTrips.get(0));
+                        }
+                    }
+                }
+            }
+        });
         // todo: Activity 3.1.8
 
         return v;
@@ -83,6 +128,7 @@ public class TripListFragment extends ListFragment {
     public void onListItemClick(ListView l, View v, int position, long id) {
         // get the Trip
         Trip trip = (Trip)(getListAdapter()).getItem(position);
+
 
         // start an instance of TripActivity
         // pass parameters using the intent object: all the object attributes of the trip to be viewed/edited.
@@ -96,8 +142,9 @@ public class TripListFragment extends ListFragment {
         intent.putExtra(Trip.EXTRA_TRIP_START_DATE, trip.getStartDate());
         intent.putExtra(Trip.EXTRA_TRIP_END_DATE, trip.getEndDate());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC, trip.isShared());
+        intent.putExtra(Trip.EXTRA_TRIP_OWNER_ID, trip.getOwnerId());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
-        startActivity(intent);
+        startActivityForResult(intent, Activity.RESULT_OK);
 
 
         // todo: Activity 3.1.5
@@ -123,7 +170,23 @@ public class TripListFragment extends ListFragment {
         }
         return super.onContextItemSelected(item);
     }
-
+    @Override
+    public void onActivityResult(int requestCode,int resultCode, Intent intent) {
+        if (resultCode == Activity.RESULT_OK) {
+            mPublicView = intent.getBooleanExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
+        }
+    }
+    @Override
+    public void onPrepareOptionsMenu(Menu menu){
+        //toggle between Public Trips and My Trips action bar items
+        if (mPublicView) {
+            menu.findItem(R.id.action_public_trips).setVisible(false);
+            menu.findItem(R.id.action_my_trips).setVisible(true);
+        } else {
+            menu.findItem(R.id.action_public_trips).setVisible(true);
+            menu.findItem(R.id.action_my_trips).setVisible(false);
+        }
+    }
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         super.onCreateOptionsMenu(menu, inflater);
@@ -134,6 +197,17 @@ public class TripListFragment extends ListFragment {
     public boolean onOptionsItemSelected(MenuItem item) {
         Intent intent;
         switch (item.getItemId()) {
+            case R.id.action_my_trips:
+                intent = new Intent(getActivity(), TripListActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, false);
+                startActivity(intent);
+                return true;
+            case R.id.action_public_trips:
+                intent = new Intent(getActivity(), TripListActivity.class);
+                intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, true);
+                startActivity(intent);
+                return true;
+
             case R.id.action_refresh:
                 // todo: Activity 3.1.8
 
@@ -204,17 +278,29 @@ public class TripListFragment extends ListFragment {
     }
 
     private void deleteTrip(Trip trip) {
-        final Trip deleteTrip = trip;
-        Thread deleteTread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                Backendless.Data.of(Trip.class).remove(deleteTrip);
-                Log.i(TAG, deleteTrip.getName()+ " remove");
-                refreshTripList();
-            }
-        });
-        deleteTread.start();
+        BackendlessUser currentUser = Backendless.UserService.CurrentUser();
+        if (!currentUser.getObjectId().equals(trip.getOwnerId())){
+            AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
+            builder.setMessage(R.string.delete_error_message);
+            builder.setTitle(R.string.delete_error_title);
+            builder.setPositiveButton(android.R.string.ok, null);
+            AlertDialog dialog = builder.create();
+            dialog.show();
+        }
+        else {
 
+
+            final Trip deleteTrip = trip;
+            Thread deleteTread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    Backendless.Data.of(Trip.class).remove(deleteTrip);
+                    Log.i(TAG, deleteTrip.getName() + " remove");
+                    refreshTripList();
+                }
+            });
+            deleteTread.start();
+        }
         // todo: Activity 3.1.5
 
     }
@@ -224,7 +310,14 @@ public class TripListFragment extends ListFragment {
         // todo: Activity 3.1.4
        BackendlessUser user = Backendless.UserService.CurrentUser();
         DataQueryBuilder dq = DataQueryBuilder.create();
-        dq.setWhereClause("ownerId='"+ user.getObjectId()+"'");
+        dq.setSortBy("created");
+        if (mPublicView){
+            dq.setWhereClause("shared = true");
+        }
+        else{
+            dq.setWhereClause("ownerId='"+ user.getObjectId()+"'");
+        }
+
 
         Backendless.Persistence.of(Trip.class).find(dq, new AsyncCallback<List<Trip>>() {
             @Override
@@ -234,6 +327,7 @@ public class TripListFragment extends ListFragment {
                 for(int i=0; i<response.size();i++){
                     mTrips.add(response.get(i));
                 }
+                ArrayListSorter.insertionSort(mTrips);
                 ((TripAdapter)getListAdapter()).notifyDataSetChanged();
             }
 

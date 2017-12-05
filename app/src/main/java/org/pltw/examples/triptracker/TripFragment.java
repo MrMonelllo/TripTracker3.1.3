@@ -5,6 +5,7 @@ package org.pltw.examples.triptracker;
         import android.app.Activity;
         import android.app.AlertDialog;
         import android.content.Intent;
+        import android.location.Location;
         import android.os.Bundle;
         import android.support.v4.app.Fragment;
 
@@ -21,11 +22,16 @@ package org.pltw.examples.triptracker;
         import android.widget.CheckBox;
         import android.widget.EditText;
         import android.text.format.DateFormat;
+        import android.widget.ImageButton;
         import android.widget.ProgressBar;
+        import android.widget.Toast;
 
         import com.backendless.Backendless;
+        import com.backendless.BackendlessUser;
         import com.backendless.async.callback.AsyncCallback;
         import com.backendless.exceptions.BackendlessFault;
+
+        import org.pltw.examples.triptracker.Trip;
 
         import java.text.SimpleDateFormat;
         import java.util.Date;
@@ -35,7 +41,11 @@ package org.pltw.examples.triptracker;
  * Created by klaidley on 4/14/2015.
  */
 public class TripFragment extends Fragment {
-
+    private ImageButton mMapButton;
+    private Location mLastLocation;
+    private final static int CONNECTION_FAILURE_RESOLUTION_REQUEST = 9000;
+    private EditText mLocTitle;
+    private Button mCheckInButton;
     private Trip mTrip;
     private EditText mNameField;
     private EditText mDescriptionField;
@@ -50,6 +60,12 @@ public class TripFragment extends Fragment {
     private static final int REQUEST_START_DATE = 1;
     private static final int REQUEST_END_DATE = 2;
     private static final String DATE_FORMAT = "E MM-dd-yyyy";
+    public void finish(){
+        Intent intent = getActivity().getIntent();
+        intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
+        getActivity().setResult(Activity.RESULT_OK, intent);
+        getActivity().finish();
+    }
 
     @Override
     public void onCreate(Bundle savedInstanceSate) {
@@ -67,7 +83,7 @@ public class TripFragment extends Fragment {
             mTrip = new Trip();
         } else {
             //existing trip
-            String id, name, desc;
+            String id, name, desc, ownerId;
             Date sDate, eDate;
             boolean shared;
             Intent intent;
@@ -75,6 +91,7 @@ public class TripFragment extends Fragment {
             //get the trip data from the intent
             intent = getActivity().getIntent();
             id = intent.getStringExtra(Trip.EXTRA_TRIP_ID);
+            ownerId = intent.getStringExtra(Trip.EXTRA_TRIP_OWNER_ID);
             name = intent.getStringExtra(Trip.EXTRA_TRIP_NAME);
             desc = intent.getStringExtra(Trip.EXTRA_TRIP_DESC);
             sDate = (Date)intent.getSerializableExtra(Trip.EXTRA_TRIP_START_DATE);
@@ -82,6 +99,10 @@ public class TripFragment extends Fragment {
             shared = intent.getBooleanExtra(Trip.EXTRA_TRIP_PUBLIC, false);
 
             // todo: Activity 3.1.6
+            BackendlessUser currentUser = Backendless.UserService.CurrentUser();
+            if (mPublicView && !(currentUser.getObjectId().equals(ownerId))) {
+                mEnabled = false;
+            }
 
             //set the trip data on the mTrip object
             mTrip = new Trip();
@@ -94,8 +115,7 @@ public class TripFragment extends Fragment {
 
             //Determine if the screen widgets will be enabled for editing
             // todo: Activity 3.1.6
-            if (mPublicView)
-                mEnabled = false;
+
         }
     }
 
@@ -175,7 +195,7 @@ public class TripFragment extends Fragment {
         switch (item.getItemId()) {
             case android.R.id.home:
                 if (NavUtils.getParentActivityName(getActivity()) != null) {
-                    NavUtils.navigateUpFromSameTask(getActivity());
+                    finish();
                 }
                 return true;
             case R.id.action_post:
@@ -309,7 +329,7 @@ public class TripFragment extends Fragment {
                 @Override
                 public void run() {
                     Backendless.Data.of(Trip.class).save(mTrip);
-                    getActivity().finish();
+                    finish();
                 }
             });
             thread.start();
@@ -328,6 +348,23 @@ public class TripFragment extends Fragment {
 
     }
 
+    // 3.2.1 additions -----------------------
+    private void manageLocationViews (View v) {
+
+        // todo: call this method from onCreateView
+
+        // todo: enable the check-ins and map views only if user owns the existing trip
+
+    }
+
+
+
+
+
+
+    // end 3.2.1 additions ---------------------------
+
+
     private void deleteTrip(MenuItem menuItem) {
         // todo: Activity 3.1.5
         if (mTrip.getObjectId()!=null){
@@ -337,7 +374,7 @@ public class TripFragment extends Fragment {
                 public void run() {
                     Backendless.Data.of(Trip.class).remove(deleteTrip);
                     Log.i(TAG, deleteTrip.getName()+ " remove");
-                    getActivity().finish();
+                    finish();
                 }
             });
             deleteTread.start();

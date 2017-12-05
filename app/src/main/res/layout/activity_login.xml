@@ -42,7 +42,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="@dimen/spacer"
-            android:text="@string/sign_up_text"
+            android:text="@string/sign_up"
             android:gravity="center" />
     <Button
         android:id="@+id/sign_up_button"

@@ -1,19 +1,31 @@
 package org.pltw.examples.triptracker;
 
+import android.support.annotation.NonNull;
+
+import com.backendless.geo.GeoPoint;
+
+import java.util.ArrayList;
 import java.util.Date;
 
 /**
- * Created by shunt on 11/17/2017.
+ * Created by shunt on 11/18/2017.
  */
 
-public class Trip implements IntentData {
+public class Trip implements IntentData, Comparable{
     private String objectId;
     private String name;
     private String description;
     private Date startDate;
     private Date endDate;
     private boolean shared;
+    private ArrayList<GeoPoint> locations;
 
+    private String ownerId;
+
+
+    public Trip(){
+        locations = new ArrayList<GeoPoint>();
+    }
 
     public String getObjectId() {
         return objectId;
@@ -61,5 +73,23 @@ public class Trip implements IntentData {
 
     public void setShared(boolean shared) {
         this.shared = shared;
+    }
+
+    public String getOwnerId() {
+        return ownerId;
+    }
+
+    public ArrayList<GeoPoint> getLocations() {
+        return locations;
+    }
+    public void setLocations(ArrayList<GeoPoint> locations) {
+        this.locations = locations;
+    }
+
+    @Override
+    public int compareTo(@NonNull Object o) {
+        Trip temp = (Trip)o;
+        return name.compareTo(temp.getName());
+
     }
 }
