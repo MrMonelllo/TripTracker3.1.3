@@ -1,9 +1,10 @@
 package org.pltw.examples.triptracker;
 
-import android.os.Bundle;
-import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentManager;
-import android.support.v7.app.AppCompatActivity;
+
+        import android.os.Bundle;
+        import android.support.v4.app.Fragment;
+        import android.support.v4.app.FragmentManager;
+        import android.support.v7.app.AppCompatActivity;
 
 /*
  * Created by klaidley on 4/14/2015.

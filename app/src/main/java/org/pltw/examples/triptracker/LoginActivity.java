@@ -1,5 +1,6 @@
 package org.pltw.examples.triptracker;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.nfc.Tag;
@@ -11,6 +12,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
 import com.backendless.Backendless;
 import com.backendless.BackendlessUser;
 import com.backendless.async.callback.AsyncCallback;
@@ -18,189 +20,142 @@ import com.backendless.exceptions.BackendlessFault;
 
 public class LoginActivity extends AppCompatActivity {
     EditText enter_name;
-    EditText enter_email;
-    EditText enter_password;
     Button sign_up_button;
     Button login_button;
     TextView sign_up_text;
-    private final String TAG = LoginActivity.class.getSimpleName();
+    EditText enter_email;
+    EditText enter_password;
+    private final String  TAG = LoginActivity.class.getSimpleName();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Backendless.initApp(this, getString(R.string.APP_ID), getString(R.string.API_KEY));
         setContentView(R.layout.activity_login);
+        Backendless.initApp( this,
+                getString(R.string.APP_ID),
+                getString(R.string.API_KEY));
         enter_email = (EditText) findViewById(R.id.enter_email);
         enter_password = (EditText) findViewById(R.id.enter_password);
         enter_name = (EditText) findViewById(R.id.enter_name);
         sign_up_button = (Button) findViewById(R.id.sign_up_button);
         login_button = (Button) findViewById(R.id.login_button);
         sign_up_text = (TextView) findViewById(R.id.sign_up_text);
-        Backendless.initApp(this, getString(R.string.APP_ID), getString(R.string.API_KEY));
         login_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String userEmail = enter_email.getText().toString();
+                String password = enter_password.getText().toString();
 
-            public void warnUser(String message){
-                AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
-                builder.setMessage(message);
-                builder.setTitle(R.string.authentication_error_title);
-                builder.setPositiveButton(android.R.string.ok, null);
-                AlertDialog dialog = builder.create();
-                dialog.show();
-            }
 
-            public boolean validateData(String email, String password){
-                if (email.contains("@")){
-                    if (password.length() >= 6){
-                        if (!password.contains(email.split("@")[0])){
-                            return true;
-                        }
-                        else {
-                            warnUser("Password cannot match or contain any portion of the email address.");
-                        }
+                userEmail = userEmail.trim();
+                password = password.trim();
+                final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
+                        "Please Wait!",
+                        "Loging in",
+                        true);
+                Backendless.UserService.login(userEmail, password, new AsyncCallback<BackendlessUser>() {
+                    @Override
+                    public void handleResponse(BackendlessUser response) {
+                        Log.i(TAG, "Login successful for "+ response.getEmail());
+                        Intent intent = new Intent(LoginActivity.this, TripListActivity.class);
+                        startActivity(intent);
                     }
-                    else {
-                        warnUser("Password does not meet complexity requirements.");
-                    }
-                }
-                else{
-                    warnUser("Email address " + email + " doesn't follow standard address format. Please check and retype your email address.");
-                }
-                return false;
-            }
-            public void onClick(View view) {
-                    String userEmail = enter_email.getText().toString();
-                    String password = enter_password.getText().toString();
-                    String name = enter_name.getText().toString();
 
-                    userEmail = userEmail.trim();
-                    password = password.trim();
-                    name = name.trim();
+                    @Override
+                    public void handleFault(BackendlessFault fault) {
+                        Log.i(TAG, "login: " + fault.getMessage());
+                        warnUser(fault.getMessage(), 1);
+                        pDialog.dismiss();
 
-                    if (!userEmail.isEmpty() && !password.isEmpty()) {
-                        if (validateData(userEmail, password)) {
-                            BackendlessUser newUser = new BackendlessUser();
-                            newUser.setEmail(userEmail);
-                            newUser.setPassword(password);
-                            final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
-                                    "Please Wait!",
-                                    "Logging in...",
-                                    true);
-                            Backendless.UserService.login(userEmail, password, new AsyncCallback<BackendlessUser>() {
-                                @Override
-                                public void handleResponse(BackendlessUser backendlessUser) {
-                                    Log.i(TAG, "Successfully logged in: " + backendlessUser.getProperty("name"));
-                                    Intent intent = new Intent(LoginActivity.this, TripListActivity.class);
-                                    startActivity(intent);
-                                }
-
-                                @Override
-                                public void handleFault(BackendlessFault backendlessFault) {
-                                    pDialog.dismiss();
-                                    warnUser(backendlessFault.getMessage());
-                                }
-                            });
-                        }
                     }
-                    else {
-                        warnUser(getString(R.string.empty_field_signup_error));
-                    }
+                });
             }
         });
         sign_up_button.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String userEmail = enter_email.getText().toString();
+                String password = enter_password.getText().toString();
+                String name = enter_name.getText().toString();
 
-            public void warnUser(String message){
-                AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
-                builder.setMessage(message);
-                builder.setTitle(R.string.authentication_error_title);
-                builder.setPositiveButton(android.R.string.ok, null);
-                AlertDialog dialog = builder.create();
-                dialog.show();
-            }
+                userEmail = userEmail.trim();
+                password = password.trim();
+                name = name.trim();
 
-            public boolean validateData(String email, String password){
-                if (email.contains("@")){
-                    if (password.length() >= 6){
-                        if (!password.contains(email.split("@")[0])){
-                            return true;
+                if (!userEmail.isEmpty() &&!password.isEmpty() && !name.isEmpty()&&password.length()>6) {
+                    BackendlessUser user = new BackendlessUser();
+                    user.setEmail(userEmail);
+                    user.setPassword(password);
+                    user.setProperty("name", name);
+                    final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
+                            "Please Wait!",
+                            "Creating a new account...",
+                            true);
+                    Backendless.UserService.register(user, new AsyncCallback<BackendlessUser>() {
+                        @Override
+                        public void handleResponse(BackendlessUser response) {
+                            Log.i(TAG,"Registration successful for "+ response.getEmail() );
+                            pDialog.dismiss();
                         }
-                        else {
-                            warnUser("Password cannot match or contain any portion of the email address.");
+
+                        @Override
+                        public void handleFault(BackendlessFault fault) {
+                            Log.i(TAG, "Registration failed: " + fault.getMessage());
+                            warnUser(fault.getMessage(), 2);
+                            pDialog.dismiss();
                         }
-                    }
-                    else {
-                        warnUser("Password does not meet complexity requirements.");
-                    }
+                    });
+
+              /* register the user in Backendless */
+
                 }
-                else{
-                    warnUser("Email address " + email + " doesn't follow standard address format. Please check and retype your email address.");
+                else {
+             /* warn the user of the problem */
+                    warnUser(getString(R.string.empty_field_signup_error), 3);
+
+
                 }
-                return false;
-            }
-            public void onClick(View view) {
-                    String userEmail = enter_email.getText().toString();
-                    String password = enter_password.getText().toString();
-                    String name = enter_name.getText().toString();
-
-                    userEmail = userEmail.trim();
-                    password = password.trim();
-                    name = name.trim();
-
-                    if (!userEmail.isEmpty() && !password.isEmpty() && !name.isEmpty()) {
-                        if (validateData(userEmail, password)) {
-                            BackendlessUser newUser = new BackendlessUser();
-                            newUser.setEmail(userEmail);
-                            newUser.setPassword(password);
-                            newUser.setProperty("name", name);
-                            final ProgressDialog pDialog = ProgressDialog.show(LoginActivity.this,
-                                    "Please Wait!",
-                                    "Creating new account...",
-                                    true);
-                            Backendless.UserService.register(newUser, new AsyncCallback<BackendlessUser>() {
-                                @Override
-                                public void handleResponse(BackendlessUser backendlessUser) {
-                                    Log.i(TAG, "Successfully registered user: " + backendlessUser.getProperty("name"));
-                                    Intent intent = new Intent(LoginActivity.this, LoginActivity.class);
-                                    startActivity(intent);
-                                }
-
-                                @Override
-                                public void handleFault(BackendlessFault backendlessFault) {
-                                    pDialog.dismiss();
-                                    warnUser(backendlessFault.getMessage());
-                                }
-                            });
-                        }
-                    }
-                    else {
-                        warnUser(getString(R.string.empty_field_signup_error));
             }
 
-        }
-    });
+
+        });
         sign_up_text.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View view) {
-
-                if (sign_up_button.getVisibility() == View.VISIBLE) {
-                    sign_up_button.setVisibility(View.GONE);
-                } else
-                    sign_up_button.setVisibility(View.VISIBLE);
-
-                if (enter_name.getVisibility() == View.VISIBLE) {
-                    enter_name.setVisibility(View.GONE);
-                } else
+            public void onClick(View v) {
+                if (sign_up_text.getText()=="Sign Up!"){
                     enter_name.setVisibility(View.VISIBLE);
-
-                if (login_button.getVisibility() == View.GONE) {
-                    login_button.setVisibility(View.VISIBLE);
-                } else
+                    sign_up_button.setVisibility(View.VISIBLE);
                     login_button.setVisibility(View.GONE);
-
-                if (sign_up_button.getVisibility() == View.VISIBLE) {
-                    sign_up_text.setText("CANCEL SIGN UP");
-                } else sign_up_text.setText("SIGN UP");
+                    sign_up_text.setText("Cancel Sign Up");
             }
-                    });
+            else{
+                    sign_up_text.setText("Sign Up!");
+                    enter_name.setVisibility(View.GONE);
+                    sign_up_button.setVisibility(View.GONE);
+                    login_button.setVisibility(View.VISIBLE);
+
                 }
             }
+        });
 
+    }
+    public void warnUser(String error, int id){
+        String title;
+        AlertDialog.Builder builder = new AlertDialog.Builder(LoginActivity.this);
+        builder.setMessage(error);
+        if(id==2){
+            builder.setTitle(R.string.authentication_error_title);
+        }
+        else if (id == 3){
+            builder.setTitle("Invalid Sign Up Credentials");
+        }
+        else if(id ==1){
+            builder.setTitle("Invalid Login Credentials");
+        }
+
+        builder.setPositiveButton(android.R.string.ok, null);
+        AlertDialog dialog = builder.create();
+        dialog.show();
+
+    }
+}

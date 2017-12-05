@@ -1,27 +1,32 @@
 package org.pltw.examples.triptracker;
 
-import android.content.Intent;
-import android.os.Bundle;
-import android.support.v4.app.ListFragment;
-import android.text.format.DateFormat;
-import android.util.Log;
-import android.view.ContextMenu;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.widget.TextView;
 
-import com.backendless.Backendless;
+        import android.content.Intent;
+        import android.os.Bundle;
+        import android.support.v4.app.ListFragment;
+        import android.text.format.DateFormat;
+        import android.util.Log;
+        import android.view.ContextMenu;
+        import android.view.LayoutInflater;
+        import android.view.Menu;
+        import android.view.MenuInflater;
+        import android.view.MenuItem;
+        import android.view.View;
+        import android.view.ViewGroup;
+        import android.widget.AdapterView;
+        import android.widget.ArrayAdapter;
+        import android.widget.ListView;
+        import android.widget.TextView;
+
+        import com.backendless.Backendless;
+import com.backendless.BackendlessUser;
 import com.backendless.async.callback.AsyncCallback;
-import com.backendless.exceptions.BackendlessFault;
+        import com.backendless.exceptions.BackendlessFault;
+import com.backendless.persistence.DataQueryBuilder;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /*
  * Created by klaidley on 4/13/2015.
@@ -31,7 +36,11 @@ public class TripListFragment extends ListFragment {
     private static final String TAG = "TripListFragment";
     private ArrayList<Trip> mTrips;
     private boolean mPublicView = false;
-
+    @Override
+    public void onResume() {
+        refreshTripList();
+        super.onResume();
+    }
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,8 +74,8 @@ public class TripListFragment extends ListFragment {
         //register the context menu
         ListView listView = (ListView)v.findViewById(android.R.id.list);
         registerForContextMenu(listView);
-		
-		// todo: Activity 3.1.8
+
+        // todo: Activity 3.1.8
 
         return v;
     }
@@ -88,13 +97,15 @@ public class TripListFragment extends ListFragment {
         intent.putExtra(Trip.EXTRA_TRIP_END_DATE, trip.getEndDate());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC, trip.isShared());
         intent.putExtra(Trip.EXTRA_TRIP_PUBLIC_VIEW, mPublicView);
-		
+        startActivity(intent);
+
+
         // todo: Activity 3.1.5
     }
 
     @Override
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenu.ContextMenuInfo menuInfo) {
-      getActivity().getMenuInflater().inflate(R.menu.menu_trip_list_item_context, menu);
+        getActivity().getMenuInflater().inflate(R.menu.menu_trip_list_item_context, menu);
     }
 
     @Override
@@ -124,8 +135,8 @@ public class TripListFragment extends ListFragment {
         Intent intent;
         switch (item.getItemId()) {
             case R.id.action_refresh:
-				// todo: Activity 3.1.8
-				
+                // todo: Activity 3.1.8
+
                 //refresh the list of trips
                 refreshTripList();
                 return true;
@@ -139,10 +150,10 @@ public class TripListFragment extends ListFragment {
                 startActivity(intent);
                 return true;
 
-			// todo: Activity 3.1.6
-			
+            // todo: Activity 3.1.6
+
             case R.id.action_logout:
-				// Logs user out and  resets Backendless CurrentUser to null
+                // Logs user out and  resets Backendless CurrentUser to null
                 Backendless.UserService.logout(new AsyncCallback<Void>() {
                     @Override
                     public void handleResponse(Void v) {
@@ -179,21 +190,58 @@ public class TripListFragment extends ListFragment {
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
 
-			// todo: Activity 3.1.4
-            return null;
-		
+           if(convertView==null){
+               convertView= getActivity().getLayoutInflater().inflate(R.layout.fragment_trip_list_item,  null);
+           }
+            Trip trip= getItem(position);
+            TextView nameTextView = (TextView)convertView.findViewById(R.id.trip_list_item_textName);
+            nameTextView.setText(trip.getName());
+            TextView dateTextView = (TextView)convertView.findViewById(R.id.trip_list_item_textStartDate);
+            dateTextView.setText(trip.getStartDate().toString());
+            return convertView;
+
         }
     }
 
     private void deleteTrip(Trip trip) {
+        final Trip deleteTrip = trip;
+        Thread deleteTread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                Backendless.Data.of(Trip.class).remove(deleteTrip);
+                Log.i(TAG, deleteTrip.getName()+ " remove");
+                refreshTripList();
+            }
+        });
+        deleteTread.start();
 
-		// todo: Activity 3.1.5
+        // todo: Activity 3.1.5
 
     }
 
     private void refreshTripList() {
 
-		// todo: Activity 3.1.4
+        // todo: Activity 3.1.4
+       BackendlessUser user = Backendless.UserService.CurrentUser();
+        DataQueryBuilder dq = DataQueryBuilder.create();
+        dq.setWhereClause("ownerId='"+ user.getObjectId()+"'");
+
+        Backendless.Persistence.of(Trip.class).find(dq, new AsyncCallback<List<Trip>>() {
+            @Override
+            public void handleResponse(List<Trip> response) {
+                Log.i(TAG, "refresh success");
+                mTrips.clear();
+                for(int i=0; i<response.size();i++){
+                    mTrips.add(response.get(i));
+                }
+                ((TripAdapter)getListAdapter()).notifyDataSetChanged();
+            }
+
+            @Override
+            public void handleFault(BackendlessFault fault) {
+                Log.i(TAG, "refresh failed"+fault.getMessage());
+            }
+        });
 
     }
 
